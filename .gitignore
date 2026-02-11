@@ -3,8 +3,9 @@ node_modules/
 .next/
 out/
 
-# data
-data/
+# data - keep blog.db for Vercel deployment, ignore WAL files
+data/*.db-shm
+data/*.db-wal
 
 # env
 .env
