@@ -1,20 +1,16 @@
-import { getDb } from '../../lib/db';
+import { getFeaturedPost, getRecentPosts, getNiches } from '../../lib/api';
 import { PostCard, FeaturedPostCard } from '@/components/PostCard';
 import { AdUnit } from '@/components/AdSense';
 import Link from 'next/link';
 
 export const revalidate = 300; // ISR: revalidate every 5 min
 
-function getPosts() {
-  const db = getDb();
-  const featured = db.prepare("SELECT * FROM posts WHERE status='published' ORDER BY views DESC, created_at DESC LIMIT 1").get();
-  const recent = db.prepare("SELECT * FROM posts WHERE status='published' ORDER BY created_at DESC LIMIT 13").all();
-  const niches = db.prepare("SELECT * FROM niches WHERE is_active=1 ORDER BY avg_cpc DESC").all();
-  return { featured, recent, niches };
-}
-
-export default function HomePage() {
-  const { featured, recent, niches } = getPosts();
+export default async function HomePage() {
+  const [featured, recent, niches] = await Promise.all([
+    getFeaturedPost(),
+    getRecentPosts(13),
+    getNiches(),
+  ]);
 
   // Exclude featured from grid
   const grid = recent.filter((p) => !featured || p.id !== featured.id).slice(0, 12);

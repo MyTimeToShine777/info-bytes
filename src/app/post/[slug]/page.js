@@ -1,4 +1,4 @@
-import { getDb } from '../../../../lib/db';
+import { getPostBySlug, getAllSlugs } from '../../../../lib/api';
 import { AdUnit, InArticleAd } from '@/components/AdSense';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
@@ -9,14 +9,13 @@ import html from 'remark-html';
 export const revalidate = 3600; // 1 hour — article content rarely changes
 
 export async function generateStaticParams() {
-  const db = getDb();
-  const posts = db.prepare("SELECT slug FROM posts WHERE status='published' LIMIT 500").all();
-  return posts.map((p) => ({ slug: p.slug }));
+  const slugs = await getAllSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }) {
-  const db = getDb();
-  const post = db.prepare("SELECT * FROM posts WHERE slug=? AND status='published'").get(params.slug);
+  const data = await getPostBySlug(params.slug);
+  const post = data?.post;
   if (!post) return {};
   return {
     title: post.meta_title || post.title,
@@ -37,7 +36,6 @@ async function markdownToHtml(md) {
 }
 
 function insertAdsInContent(htmlContent) {
-  // Insert an in-article ad placeholder after every 3rd paragraph
   const parts = htmlContent.split('</p>');
   const out = [];
   for (let i = 0; i < parts.length; i++) {
@@ -51,21 +49,14 @@ function insertAdsInContent(htmlContent) {
 }
 
 export default async function PostPage({ params }) {
-  const db = getDb();
-  const post = db.prepare("SELECT * FROM posts WHERE slug=? AND status='published'").get(params.slug);
-  if (!post) notFound();
+  const data = await getPostBySlug(params.slug);
+  if (!data?.post) notFound();
 
-  // Bump view count (fire-and-forget)
-  try { db.prepare("UPDATE posts SET views = views + 1 WHERE id=?").run(post.id); } catch {}
+  const post = data.post;
+  const related = data.related || [];
 
   const contentHtml = await markdownToHtml(post.content || '');
   const withAds = insertAdsInContent(contentHtml);
-
-  // Related posts
-  const related = db.prepare(
-    "SELECT * FROM posts WHERE niche_id=? AND id!=? AND status='published' ORDER BY created_at DESC LIMIT 4"
-  ).all(post.niche_id, post.id);
-
   const tags = post.tags ? post.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
 
   return (

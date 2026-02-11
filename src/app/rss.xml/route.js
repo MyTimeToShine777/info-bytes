@@ -1,4 +1,4 @@
-import { getDb } from '../../../lib/db';
+import { searchPosts } from '../../../lib/api';
 import { Feed } from 'feed';
 
 export const revalidate = 3600;
@@ -7,8 +7,8 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || 'SmartFinance Blog';
 
 export async function GET() {
-  const db = getDb();
-  const posts = db.prepare("SELECT * FROM posts WHERE status='published' ORDER BY created_at DESC LIMIT 50").all();
+  const data = await searchPosts({ status: 'published', limit: '50' });
+  const posts = data?.posts || [];
 
   const feed = new Feed({
     title: SITE_NAME,

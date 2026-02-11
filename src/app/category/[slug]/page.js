@@ -1,4 +1,4 @@
-import { getDb } from '../../../../lib/db';
+import { getPostsByCategory, getNiches } from '../../../../lib/api';
 import { PostCard } from '@/components/PostCard';
 import { AdUnit } from '@/components/AdSense';
 import { notFound } from 'next/navigation';
@@ -7,14 +7,13 @@ import Link from 'next/link';
 export const revalidate = 300;
 
 export async function generateStaticParams() {
-  const db = getDb();
-  const niches = db.prepare("SELECT id FROM niches WHERE is_active=1").all();
-  return niches.map((n) => ({ slug: n.id }));
+  const niches = await getNiches();
+  return niches.filter(n => n.is_active).map((n) => ({ slug: n.id }));
 }
 
 export async function generateMetadata({ params }) {
-  const db = getDb();
-  const niche = db.prepare("SELECT * FROM niches WHERE id=?").get(params.slug);
+  const data = await getPostsByCategory(params.slug);
+  const niche = data?.niche;
   if (!niche) return {};
   return {
     title: `${niche.name} Articles`,
@@ -22,12 +21,12 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default function CategoryPage({ params }) {
-  const db = getDb();
-  const niche = db.prepare("SELECT * FROM niches WHERE id=?").get(params.slug);
-  if (!niche) notFound();
+export default async function CategoryPage({ params }) {
+  const data = await getPostsByCategory(params.slug);
+  if (!data?.niche) notFound();
 
-  const posts = db.prepare("SELECT * FROM posts WHERE niche_id=? AND status='published' ORDER BY created_at DESC LIMIT 50").all(params.slug);
+  const niche = data.niche;
+  const posts = data.posts || [];
 
   return (
     <div className="container-blog py-8">

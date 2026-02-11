@@ -1,13 +1,15 @@
-import { getDb } from '../../../lib/db';
+import { getAllSlugs, getNiches, searchPosts } from '../../../lib/api';
 
 export const revalidate = 3600; // 1 hour
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 export async function GET() {
-  const db = getDb();
-  const posts = db.prepare("SELECT slug, updated_at, niche_id FROM posts WHERE status='published' ORDER BY created_at DESC LIMIT 1000").all();
-  const niches = db.prepare("SELECT id FROM niches WHERE is_active=1").all();
+  const [postsData, niches] = await Promise.all([
+    searchPosts({ status: 'published', limit: '1000' }),
+    getNiches(),
+  ]);
+  const posts = postsData?.posts || [];
 
   const urls = [
     // Homepage (highest priority)

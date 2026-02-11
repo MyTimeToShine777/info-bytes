@@ -1,23 +1,14 @@
-import { getDb } from '../../../../lib/db';
 import { NextResponse } from 'next/server';
 
-// GET /api/niches
-export async function GET() {
-  const db = getDb();
-  const niches = db.prepare(`
-    SELECT n.*, COUNT(p.id) as post_count 
-    FROM niches n LEFT JOIN posts p ON p.niche_id = n.id 
-    GROUP BY n.id ORDER BY n.market, n.avg_cpc DESC
-  `).all();
-  return NextResponse.json({ niches });
-}
+const API_BASE = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://trade-api-81q6.onrender.com/api/blog';
 
-// PUT /api/niches — update niche active status
-export async function PUT(request) {
-  const db = getDb();
-  const body = await request.json();
-  const { id, is_active } = body;
-  if (!id) return NextResponse.json({ error: 'Niche ID required' }, { status: 400 });
-  db.prepare('UPDATE niches SET is_active = ? WHERE id = ?').run(is_active ? 1 : 0, id);
-  return NextResponse.json({ success: true });
+// GET /api/niches — proxy to backend
+export async function GET() {
+  try {
+    const res = await fetch(`${API_BASE}/niches`, { next: { revalidate: 300 } });
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (e) {
+    return NextResponse.json({ niches: [] }, { status: 500 });
+  }
 }
