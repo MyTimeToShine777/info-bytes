@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { AdminShell } from '../page';
+import { useAdminAuth } from '../layout';
 
 export default function NichesPage() {
+  const auth = useAdminAuth();
   const [niches, setNiches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -46,7 +48,7 @@ export default function NichesPage() {
   };
 
   return (
-    <AdminShell active="niches">
+    <AdminShell active="niches" onLogout={auth?.logout}>
       <div className="max-w-5xl">
         <h1 className="text-2xl font-extrabold text-gray-900 mb-6">Niches & Categories</h1>
 

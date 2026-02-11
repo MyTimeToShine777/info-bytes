@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminShell } from '../../page';
+import { useAdminAuth } from '../../layout';
 
 export default function NewPostPage() {
   return <PostEditor />;
 }
 
 export function PostEditor({ postId }) {
+  const auth = useAdminAuth();
   const router = useRouter();
   const isEdit = !!postId;
   const [niches, setNiches] = useState([]);
@@ -27,22 +29,23 @@ export function PostEditor({ postId }) {
   useEffect(() => {
     fetch('/api/niches').then(r => r.json()).then(d => setNiches(d.niches || []));
     if (isEdit) {
-      fetch(`/api/posts/${postId}`).then(r => r.json()).then(d => {
+      fetch(`/api/admin/posts/${postId}`, {
+        headers: { 'x-admin-password': auth?.password || '' },
+      }).then(r => r.json()).then(d => {
         if (d.post) {
           setForm({
             ...d.post,
-            tags: d.post.tags || '',
+            tags: Array.isArray(d.post.tags) ? d.post.tags.join(', ') : (d.post.tags || ''),
             is_trending: !!d.post.is_trending,
           });
         }
       });
     }
-  }, [isEdit, postId]);
+  }, [isEdit, postId, auth?.password]);
 
   const updateField = (field, value) => {
     setForm(f => {
       const updated = { ...f, [field]: value };
-      // Auto-generate slug from title
       if (field === 'title' && !isEdit) {
         updated.slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       }
@@ -61,15 +64,22 @@ export function PostEditor({ postId }) {
     setError('');
     setSuccess('');
 
-    const body = { ...form, status: publishStatus || form.status };
+    const body = { ...form, status: publishStatus || form.status, adminPassword: auth?.password };
     if (body.tags && typeof body.tags === 'string') {
       body.tags = body.tags.split(',').map(t => t.trim()).filter(Boolean);
     }
 
     try {
-      const url = isEdit ? `/api/posts/${postId}` : '/api/posts';
+      const url = isEdit ? `/api/admin/posts/${postId}` : '/api/admin/posts';
       const method = isEdit ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': auth?.password || '',
+        },
+        body: JSON.stringify(body),
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -90,12 +100,12 @@ export function PostEditor({ postId }) {
   const readingTime = Math.ceil(wordCount / 200);
 
   return (
-    <AdminShell active="new-post">
+    <AdminShell active={isEdit ? 'posts' : 'new-post'} onLogout={auth?.logout}>
       <div className="max-w-4xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-extrabold text-gray-900">{isEdit ? 'Edit Post' : 'Write New Post'}</h1>
           <div className="flex items-center gap-2">
-            <button onClick={() => setPreview(!preview)} className="text-sm text-gray-500 hover:text-brand-600 px-3 py-1.5 border border-gray-200 rounded-lg">
+            <button onClick={() => setPreview(!preview)} className="text-sm text-gray-500 hover:text-indigo-600 px-3 py-1.5 border border-gray-200 rounded-lg">
               {preview ? '✏️ Editor' : '👁️ Preview'}
             </button>
             <button onClick={() => save('draft')} disabled={saving || !form.title || !form.content}
@@ -103,7 +113,7 @@ export function PostEditor({ postId }) {
               {saving ? 'Saving...' : 'Save Draft'}
             </button>
             <button onClick={() => save('published')} disabled={saving || !form.title || !form.content}
-              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors">
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors">
               {saving ? 'Publishing...' : '🚀 Publish'}
             </button>
           </div>
@@ -113,13 +123,12 @@ export function PostEditor({ postId }) {
         {success && <div className="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-xl mb-4 text-sm">{success}</div>}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Editor */}
           <div className="lg:col-span-2 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
               <input type="text" value={form.title} onChange={(e) => updateField('title', e.target.value)}
                 placeholder="Write a compelling title..."
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
 
             <div>
@@ -127,7 +136,7 @@ export function PostEditor({ postId }) {
               <div className="flex items-center gap-1 text-sm text-gray-400">
                 <span>/post/</span>
                 <input type="text" value={form.slug} onChange={(e) => updateField('slug', e.target.value)}
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
             </div>
 
@@ -135,7 +144,7 @@ export function PostEditor({ postId }) {
               <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt / Meta Description</label>
               <textarea value={form.excerpt} onChange={(e) => updateField('excerpt', e.target.value)}
                 placeholder="Brief description for SEO and social sharing..."
-                rows={2} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" />
+                rows={2} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
               <div className="text-xs text-gray-400 mt-1">{(form.excerpt || '').length}/155 characters</div>
             </div>
 
@@ -150,12 +159,11 @@ export function PostEditor({ postId }) {
               ) : (
                 <textarea value={form.content} onChange={(e) => updateField('content', e.target.value)}
                   placeholder="Write your article in Markdown...\n\n## Introduction\n\nStart with a strong opening...\n\n## Main Section\n\nDetailed content..."
-                  rows={20} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 resize-y" />
+                  rows={20} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y" />
               )}
             </div>
           </div>
 
-          {/* Sidebar Settings */}
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4">
               <h3 className="font-bold text-gray-900 text-sm">Post Settings</h3>
@@ -178,7 +186,6 @@ export function PostEditor({ postId }) {
                   {niches.filter(n => form.market === 'all' || !form.market || n.market === form.market || n.market === 'global').map(n => (
                     <option key={n.id} value={n.id}>{n.name}</option>
                   ))}
-                  {/* Also show all niches as fallback */}
                   <optgroup label="All niches">
                     {niches.map(n => <option key={`all-${n.id}`} value={n.id}>{n.name}</option>)}
                   </optgroup>
@@ -246,7 +253,6 @@ export function PostEditor({ postId }) {
   );
 }
 
-// Simple markdown to HTML for preview (basic)
 function simpleMarkdown(md) {
   if (!md) return '<p class="text-gray-400">Start writing to see preview...</p>';
   return md

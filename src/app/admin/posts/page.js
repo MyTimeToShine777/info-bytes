@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { AdminShell } from '../page';
+import { useAdminAuth } from '../layout';
 
 const MARKET_FLAGS = { india: '🇮🇳', us: '🇺🇸', global: '🌍' };
 
-export default function AdminPostsPage() {
+export default function PostsPage() {
+  const auth = useAdminAuth();
   const [posts, setPosts] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -16,31 +18,37 @@ export default function AdminPostsPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
 
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = useCallback(() => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: '15' });
+    const params = new URLSearchParams({ page, limit: 20 });
     if (filters.status !== 'all') params.set('status', filters.status);
     if (filters.market !== 'all') params.set('market', filters.market);
-    if (filters.niche !== 'all') params.set('niche', filters.niche);
+    if (filters.niche !== 'all') params.set('niche_id', filters.niche);
     if (filters.search) params.set('search', filters.search);
 
-    const res = await fetch(`/api/posts?${params}`);
-    const data = await res.json();
-    setPosts(data.posts || []);
-    setTotal(data.total || 0);
-    setPages(data.pages || 1);
-    setLoading(false);
+    fetch(`/api/posts?${params}`)
+      .then(r => r.json())
+      .then(data => {
+        setPosts(data.posts || []);
+        setTotal(data.total || 0);
+        setPages(data.pages || 1);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [page, filters]);
 
+  useEffect(() => { fetchPosts(); }, [fetchPosts]);
   useEffect(() => {
     fetch('/api/niches').then(r => r.json()).then(d => setNiches(d.niches || []));
   }, []);
 
-  useEffect(() => { fetchPosts(); }, [fetchPosts]);
-
   const updateStatus = async (id, status) => {
     setActionLoading(id);
-    await fetch(`/api/posts/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+    await fetch(`/api/admin/posts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': auth?.password || '' },
+      body: JSON.stringify({ status, adminPassword: auth?.password }),
+    });
     await fetchPosts();
     setActionLoading(null);
   };
@@ -48,25 +56,32 @@ export default function AdminPostsPage() {
   const deletePost = async (id, title) => {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setActionLoading(id);
-    await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+    await fetch(`/api/admin/posts/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-password': auth?.password || '' },
+    });
     await fetchPosts();
     setActionLoading(null);
   };
 
   const toggleTrending = async (id, current) => {
-    await fetch(`/api/posts/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_trending: !current }) });
+    await fetch(`/api/admin/posts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': auth?.password || '' },
+      body: JSON.stringify({ is_trending: !current, adminPassword: auth?.password }),
+    });
     await fetchPosts();
   };
 
   return (
-    <AdminShell active="posts">
+    <AdminShell active="posts" onLogout={auth?.logout}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900">All Posts</h1>
             <p className="text-sm text-gray-500">{total} posts total</p>
           </div>
-          <Link href="/admin/posts/new" className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors">
+          <Link href="/admin/posts/new" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
             + New Post
           </Link>
         </div>
@@ -79,7 +94,7 @@ export default function AdminPostsPage() {
               placeholder="Search posts..."
               value={filters.search}
               onChange={(e) => { setFilters(f => ({ ...f, search: e.target.value })); setPage(1); }}
-              className="flex-1 min-w-[200px] border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="flex-1 min-w-[200px] border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <select value={filters.status} onChange={(e) => { setFilters(f => ({ ...f, status: e.target.value })); setPage(1); }}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
@@ -110,7 +125,7 @@ export default function AdminPostsPage() {
             <div className="p-12 text-center">
               <p className="text-4xl mb-3">📝</p>
               <p className="text-gray-500 font-medium">No posts found</p>
-              <Link href="/admin/posts/new" className="text-sm text-brand-600 hover:underline mt-2 block">Create your first post</Link>
+              <Link href="/admin/posts/new" className="text-sm text-indigo-600 hover:underline mt-2 block">Create your first post</Link>
             </div>
           ) : (
             <table className="w-full text-sm">
@@ -133,7 +148,7 @@ export default function AdminPostsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {p.is_trending ? <span title="Trending">🔥</span> : null}
-                        <Link href={`/admin/posts/${p.id}`} className="font-medium text-gray-900 hover:text-brand-600 line-clamp-1">
+                        <Link href={`/admin/posts/${p.id}`} className="font-medium text-gray-900 hover:text-indigo-600 line-clamp-1">
                           {p.title}
                         </Link>
                       </div>
@@ -152,7 +167,7 @@ export default function AdminPostsPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Link href={`/admin/posts/${p.id}`} className="text-gray-400 hover:text-brand-600 p-1" title="Edit">✏️</Link>
+                        <Link href={`/admin/posts/${p.id}`} className="text-gray-400 hover:text-indigo-600 p-1" title="Edit">✏️</Link>
                         <button onClick={() => toggleTrending(p.id, p.is_trending)} className="text-gray-400 hover:text-orange-500 p-1" title="Toggle Trending">
                           {p.is_trending ? '🔥' : '⭐'}
                         </button>
@@ -169,7 +184,7 @@ export default function AdminPostsPage() {
                         )}
                         <button onClick={() => deletePost(p.id, p.title)} disabled={actionLoading === p.id}
                           className="text-gray-400 hover:text-red-500 p-1 disabled:opacity-50" title="Delete">🗑️</button>
-                        <Link href={`/post/${p.slug}`} target="_blank" className="text-gray-400 hover:text-brand-600 p-1" title="View">👁️</Link>
+                        <Link href={`/post/${p.slug}`} target="_blank" className="text-gray-400 hover:text-indigo-600 p-1" title="View">👁️</Link>
                       </div>
                     </td>
                   </tr>

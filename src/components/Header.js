@@ -32,6 +32,9 @@ export function Header() {
               {l.label}
             </Link>
           ))}
+          <Link href="/admin" className="ml-2 px-2 py-1 text-xs text-gray-400 hover:text-indigo-600 rounded transition-colors" title="Admin Panel">
+            ⚙️
+          </Link>
         </nav>
 
         {/* Mobile hamburger */}
