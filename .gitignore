@@ -1,0 +1,20 @@
+# node
+node_modules/
+.next/
+out/
+
+# data
+data/
+
+# env
+.env
+.env.local
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

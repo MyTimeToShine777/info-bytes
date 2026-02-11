@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Merriweather:wght@400;700;900&display=swap');
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply font-sans text-gray-800 bg-white;
+  }
+}
+
+@layer components {
+  .container-blog {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden
+           hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300;
+  }
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold tracking-wide;
+  }
+  .badge-blue { @apply bg-brand-50 text-brand-700; }
+  .badge-green { @apply bg-emerald-50 text-emerald-700; }
+  .badge-purple { @apply bg-purple-50 text-purple-700; }
+  .badge-orange { @apply bg-orange-50 text-orange-700; }
+
+  /* AdSense slot */
+  .ad-slot {
+    @apply w-full flex items-center justify-center text-center text-xs text-gray-400 my-6;
+    min-height: 90px;
+  }
+}
+
+/* Smooth article prose */
+.prose img {
+  @apply rounded-xl shadow-md;
+}
+.prose h2 {
+  @apply scroll-mt-20;
+}

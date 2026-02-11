@@ -1,0 +1,16 @@
+{
+  "name": "Info Bytes",
+  "short_name": "InfoBytes",
+  "description": "Trending news, movie reviews, finance updates & bite-sized insights",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
